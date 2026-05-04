@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: store
+  jwt:
+    secret: test_jwt_secret_key_for_testing_only_must_be_at_least_32_chars
+    accessTokenValiditySeconds: 86400000
+    refreshTokenValiditySeconds: 604800000
+  profiles:
+    active: dev
+stripe:
+  secretKey: sk_test_dummy
+  webhookSecretKey: whsec_dummy
