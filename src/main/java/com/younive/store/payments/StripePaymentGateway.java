@@ -10,12 +10,14 @@ import com.stripe.param.checkout.SessionCreateParams;
 import com.younive.store.orders.Order;
 import com.younive.store.orders.OrderItem;
 import com.younive.store.orders.PaymentStatus;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.Optional;
 
+@Slf4j
 @Service
 public class StripePaymentGateway implements PaymentGateway {
     @Value("${websiteUrl}")
@@ -30,7 +32,11 @@ public class StripePaymentGateway implements PaymentGateway {
                     .setMode(SessionCreateParams.Mode.PAYMENT)
                     .setSuccessUrl(websiteUrl + "/checkout-success?order_id=" + order.getId())
                     .setCancelUrl(websiteUrl + "/checkout-cancel")
-                    .putMetadata("order_id", order.getId().toString());
+                    .putMetadata("order_id", order.getId().toString())
+                    .setPaymentIntentData(
+                            SessionCreateParams.PaymentIntentData.builder()
+                                    .putMetadata("order_id", order.getId().toString())
+                                    .build());
             order.getItems().forEach(item -> {
                 var lineItem = createLineItem(item);
                 builder.addLineItem(lineItem);
@@ -39,7 +45,7 @@ public class StripePaymentGateway implements PaymentGateway {
         return new CheckoutSession(session.getUrl());
         }
         catch (StripeException e) {
-            System.out.println(e.getMessage());
+            log.error("Failed to create Stripe checkout session for order {}", order.getId(), e);
             throw new PaymentException();
         }
     }

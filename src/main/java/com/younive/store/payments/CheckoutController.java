@@ -23,11 +23,16 @@ public class CheckoutController {
     }
 
     @PostMapping("/webhook")
-    public void handleWebhook(
+    public ResponseEntity<Void> handleWebhook(
             @RequestHeader Map<String, String> headers,
             @RequestBody String payload
     ) {
-        checkoutService.handleWebhookEvent(new WebhookRequest(headers, payload));
+        try {
+            checkoutService.handleWebhookEvent(new WebhookRequest(headers, payload));
+            return ResponseEntity.ok().build();
+        } catch (PaymentException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @ExceptionHandler(PaymentException.class)

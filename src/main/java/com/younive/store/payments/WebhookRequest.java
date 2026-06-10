@@ -9,5 +9,5 @@ import java.util.Map;
 @AllArgsConstructor
 public class WebhookRequest {
     private Map<String, String> headers;
-    private String Payload;
+    private String payload;
 }
