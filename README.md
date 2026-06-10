@@ -11,9 +11,10 @@ REST API for an e-commerce store. Built with Spring Boot 4, Java 23, MySQL, and 
 | Database | MySQL 8 + Flyway migrations |
 | Auth | Spring Security + JWT (JJWT 0.12.6) |
 | Payments | Stripe Java SDK 32.1 |
-| Mapping | MapStruct 1.7 |
+| Mapping | MapStruct 1.6.3 |
 | Docs | SpringDoc OpenAPI |
 | Build | Maven |
+| Testing | JUnit 5, Mockito, MockMvc, Playwright (E2E) |
 
 ## Prerequisites
 
@@ -23,34 +24,36 @@ REST API for an e-commerce store. Built with Spring Boot 4, Java 23, MySQL, and 
 
 ## Setup
 
-**1. Clone and configure**
+**1. Set environment variables**
 
-Update DB credentials in `src/main/resources/application-dev.yaml` if needed:
-
-```yaml
-spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/store_api?createDatabaseIfNotExist=true
-    username: root
-    password: your_password
-websiteUrl: http://localhost:4242
-```
-
-**2. Set environment variables**
+No credentials live in config files — everything comes from the environment:
 
 ```bash
-JWT_SECRET=your_256bit_secret
+MYSQL_USER=root                      # dev datasource user (defaults to root)
+MYSQL_PASSWORD=your_db_password      # dev datasource password
+JWT_SECRET=your_secret               # HS256 key, must be at least 32 chars
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET_KEY=whsec_...
 ```
 
-**3. Run**
+The dev datasource points at `jdbc:mysql://localhost:3306/store_api` (auto-created). Adjust the URL in `src/main/resources/application-dev.yaml` if your MySQL lives elsewhere.
+
+**2. Run**
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
 Flyway auto-creates the schema on first run.
+
+## Testing
+
+```bash
+./mvnw test          # unit + MockMvc integration tests (needs MySQL)
+./mvnw test -Pe2e    # E2E suite (Playwright) — needs the app running on :8080
+```
+
+The E2E suite lives in `src/test/java/com/younive/store/e2e/` and is excluded from the default `test` run. See [docs/e2e.md](docs/e2e.md) for prerequisites and configuration.
 
 ## API Reference
 
@@ -69,10 +72,10 @@ Flyway auto-creates the schema on first run.
 
 **Login response:**
 ```json
-{ "accessToken": "eyJ..." }
+{ "token": "eyJ..." }
 ```
 
-Token lifetimes: access = 5 min, refresh = 7 days.
+Token lifetimes: access = 5 min, refresh = 7 days. Tokens carry a `type` claim (`access`/`refresh`); the refresh endpoint rejects access tokens and the auth filter rejects refresh tokens.
 
 ---
 
@@ -80,12 +83,12 @@ Token lifetimes: access = 5 min, refresh = 7 days.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| `POST` | `/users` | Public | Register new user |
-| `GET` | `/users` | Bearer | List all users |
+| `POST` | `/users` | Public | Register new user (always role `USER`) |
+| `GET` | `/users` | ADMIN | List all users (optional `?sort=name\|email`) |
 | `GET` | `/users/{id}` | Bearer | Get user by ID |
-| `PUT` | `/users/{id}` | Bearer | Update user |
-| `DELETE` | `/users/{id}` | Bearer | Delete user |
-| `POST` | `/users/{id}/change-password` | Bearer | Change password |
+| `PUT` | `/users/{id}` | Self or ADMIN | Update user |
+| `DELETE` | `/users/{id}` | Self or ADMIN | Delete user |
+| `POST` | `/users/{id}/change-password` | Self or ADMIN | Change password (verifies old password) |
 
 ---
 
@@ -93,11 +96,11 @@ Token lifetimes: access = 5 min, refresh = 7 days.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| `GET` | `/products` | Public | List all products (optional `?categoryId=`) |
-| `GET` | `/products/{id}` | Public | Get product by ID |
-| `POST` | `/products` | Bearer | Create product |
-| `PUT` | `/products/{id}` | Bearer | Update product |
-| `DELETE` | `/products/{id}` | Bearer | Delete product |
+| `GET` | `/products` | Bearer | List all products (optional `?categoryId=`) |
+| `GET` | `/products/{id}` | Bearer | Get product by ID |
+| `POST` | `/products` | ADMIN | Create product |
+| `PUT` | `/products/{id}` | ADMIN | Update product |
+| `DELETE` | `/products/{id}` | ADMIN | Delete product |
 
 ---
 
@@ -121,7 +124,7 @@ Cart is anonymous and identified by a UUID.
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | `POST` | `/checkout` | Bearer | Create Stripe checkout session |
-| `POST` | `/checkout/webhook` | Public | Stripe webhook handler |
+| `POST` | `/checkout/webhook` | Public | Stripe webhook handler (signature verified; forged/missing signature → 400) |
 
 **Checkout request:**
 ```json
@@ -193,5 +196,11 @@ src/main/java/com/younive/store/
 
 | Role | Access |
 |---|---|
-| `USER` | Standard authenticated endpoints |
-| `ADMIN` | All endpoints including `/admin/*` |
+| `USER` | Standard authenticated endpoints; can only modify their own account |
+| `ADMIN` | All endpoints including `/admin/*`, product writes, user listing |
+
+Registration always assigns `USER`. There is no seeded admin — promote one directly in the database:
+
+```sql
+UPDATE users SET role = 'ADMIN' WHERE email = 'you@example.com';
+```
