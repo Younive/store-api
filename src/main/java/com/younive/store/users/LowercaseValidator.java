@@ -8,6 +8,6 @@ public class LowercaseValidator implements ConstraintValidator<Lowercase, String
     @Override
     public boolean isValid(String value, ConstraintValidatorContext constraintValidatorContext) {
         if (value == null)  return true;
-        return false;
+        return value.equals(value.toLowerCase());
     }
 }

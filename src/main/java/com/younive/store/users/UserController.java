@@ -40,7 +40,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public UserDto updateUser(@PathVariable Long id, @RequestBody UpdateUserRequest request){
+    public UserDto updateUser(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request){
         return userService.updateUser(id, request);
     }
 
@@ -50,7 +50,7 @@ public class UserController {
     }
 
     @PostMapping("/{id}/change-password")
-    public void changePassword(@PathVariable Long id, @RequestBody ChangePasswordRequest request){
+    public void changePassword(@PathVariable Long id, @Valid @RequestBody ChangePasswordRequest request){
         userService.changePassword(id, request);
     }
 
@@ -68,6 +68,6 @@ public class UserController {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Void> handleAccessDenied() {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 }
