@@ -78,13 +78,8 @@
         </dependency>
         <dependency>
             <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-processor</artifactId>
-            <version>1.7.0.Beta1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct</artifactId>
-            <version>1.7.0.Beta1</version>
+            <version>1.6.3</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -159,9 +154,9 @@
                 <version>11.14.1</version>
                 <configuration>
                     <url>jdbc:mysql://localhost:3306/store_api?createDatabaseIfNotExist=true</url>
-                    <user>root</user>
-                    <password>Oplus408530_</password>
-                    <cleanDisabled>false</cleanDisabled>
+                    <user>${env.MYSQL_USER}</user>
+                    <password>${env.MYSQL_PASSWORD}</password>
+                    <cleanDisabled>true</cleanDisabled>
                 </configuration>
             </plugin>
 
