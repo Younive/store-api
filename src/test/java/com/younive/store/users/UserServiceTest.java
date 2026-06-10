@@ -1,5 +1,6 @@
 package com.younive.store.users;
 
+import com.younive.store.auth.AuthService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -21,6 +22,7 @@ class UserServiceTest {
     @Mock UserRepository userRepository;
     @Mock UserMapper userMapper;
     @Mock PasswordEncoder passwordEncoder;
+    @Mock AuthService authService;
     @InjectMocks UserService userService;
 
     @Test
@@ -78,11 +80,12 @@ class UserServiceTest {
 
     @Test
     void updateUser_savesAndReturnsDto() {
-        var user = User.builder().id(1L).name("Old").build();
+        var user = User.builder().id(1L).name("Old").role(Role.USER).build();
         var request = new UpdateUserRequest();
         request.setName("New");
         var dto = new UserDto(1L, "New", "user@example.com");
 
+        when(authService.getCurrentUser()).thenReturn(user);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(userMapper.toDto(user)).thenReturn(dto);
 
@@ -94,8 +97,35 @@ class UserServiceTest {
     }
 
     @Test
+    void updateUser_throwsAccessDeniedException_whenNotOwnerNorAdmin() {
+        var currentUser = User.builder().id(2L).role(Role.USER).build();
+        when(authService.getCurrentUser()).thenReturn(currentUser);
+
+        assertThatThrownBy(() -> userService.updateUser(1L, new UpdateUserRequest()))
+                .isInstanceOf(AccessDeniedException.class);
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void updateUser_allowsAdmin_toUpdateOtherUser() {
+        var admin = User.builder().id(2L).role(Role.ADMIN).build();
+        var user = User.builder().id(1L).name("Old").role(Role.USER).build();
+        var request = new UpdateUserRequest();
+        var dto = new UserDto(1L, "New", "user@example.com");
+
+        when(authService.getCurrentUser()).thenReturn(admin);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userMapper.toDto(user)).thenReturn(dto);
+
+        userService.updateUser(1L, request);
+
+        verify(userRepository).save(user);
+    }
+
+    @Test
     void deleteUser_callsRepositoryDelete() {
-        var user = User.builder().id(1L).build();
+        var user = User.builder().id(1L).role(Role.USER).build();
+        when(authService.getCurrentUser()).thenReturn(user);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
 
         userService.deleteUser(1L);
@@ -104,28 +134,41 @@ class UserServiceTest {
     }
 
     @Test
-    void changePassword_updatesPassword() {
-        var user = User.builder().id(1L).password("hashed_old").build();
+    void deleteUser_throwsAccessDeniedException_whenNotOwnerNorAdmin() {
+        var currentUser = User.builder().id(2L).role(Role.USER).build();
+        when(authService.getCurrentUser()).thenReturn(currentUser);
+
+        assertThatThrownBy(() -> userService.deleteUser(1L))
+                .isInstanceOf(AccessDeniedException.class);
+        verify(userRepository, never()).delete(any());
+    }
+
+    @Test
+    void changePassword_updatesPasswordEncoded() {
+        var user = User.builder().id(1L).password("hashed_old").role(Role.USER).build();
         var request = new ChangePasswordRequest();
         request.setOldPassword("old_pass");
         request.setNewPassword("new_pass");
 
+        when(authService.getCurrentUser()).thenReturn(user);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("old_pass", "hashed_old")).thenReturn(true);
+        when(passwordEncoder.encode("new_pass")).thenReturn("hashed_new");
 
         userService.changePassword(1L, request);
 
-        assertThat(user.getPassword()).isEqualTo("new_pass");
+        assertThat(user.getPassword()).isEqualTo("hashed_new");
         verify(userRepository).save(user);
     }
 
     @Test
     void changePassword_throwsAccessDeniedException_whenWrongOldPassword() {
-        var user = User.builder().id(1L).password("hashed_old").build();
+        var user = User.builder().id(1L).password("hashed_old").role(Role.USER).build();
         var request = new ChangePasswordRequest();
         request.setOldPassword("wrong");
         request.setNewPassword("new_pass");
 
+        when(authService.getCurrentUser()).thenReturn(user);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong", "hashed_old")).thenReturn(false);
 
