@@ -69,11 +69,23 @@ class AuthServiceTest {
 
         when(jwtService.parseToken("valid_token")).thenReturn(jwt);
         when(jwt.isExpired()).thenReturn(false);
+        when(jwt.isRefreshToken()).thenReturn(true);
         when(jwt.getUserId()).thenReturn(1L);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(jwtService.generateAccessToken(user)).thenReturn(newToken);
 
         assertThat(authService.refreshAccessToken("valid_token")).isEqualTo(newToken);
+    }
+
+    @Test
+    void refreshAccessToken_throwsBadCredentials_whenAccessTokenUsed() {
+        var jwt = mock(Jwt.class);
+        when(jwtService.parseToken("access_token")).thenReturn(jwt);
+        when(jwt.isExpired()).thenReturn(false);
+        when(jwt.isRefreshToken()).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.refreshAccessToken("access_token"))
+                .isInstanceOf(BadCredentialsException.class);
     }
 
     @Test
