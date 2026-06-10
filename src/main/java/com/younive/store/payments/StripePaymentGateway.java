@@ -55,6 +55,9 @@ public class StripePaymentGateway implements PaymentGateway {
         try {
             var payload = request.getPayload();
             var signature = request.getHeaders().get("stripe-signature");
+            if (signature == null) {
+                throw new PaymentException("Missing Stripe-Signature header");
+            }
             var event = Webhook.constructEvent(payload, signature, webhookSecretKey);
 
             return switch (event.getType()) {
