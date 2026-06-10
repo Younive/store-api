@@ -39,7 +39,7 @@ public class CartController {
             UriComponentsBuilder uriBuilder) {
 
         var cartItemDto = cartService.addToCart(cartId, request.getProductId());
-        var uri = uriBuilder.path("/carts/{id}").build(cartItemDto);
+        var uri = uriBuilder.path("/carts/{id}").build(cartId);
         return ResponseEntity.created(uri).body(cartItemDto);
     }
 
@@ -49,7 +49,7 @@ public class CartController {
         return  ResponseEntity.ok(cartDto);
     }
 
-    @PutMapping("/carts/{cartId}/items/{productId}")
+    @PutMapping("/{cartId}/items/{productId}")
     public CartItemDto updateCartItem(
             @PathVariable UUID cartId,
             @PathVariable Long productId,

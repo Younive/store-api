@@ -64,6 +64,7 @@ public class CartService {
             throw new CartNotFoundException();
         }
         cart.removeItem(productId);
+        cartRepository.save(cart);
     }
 
     public void clearCart(UUID cartId){
