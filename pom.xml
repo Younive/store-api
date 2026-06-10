@@ -126,6 +126,14 @@
             <version>32.1.0</version>
         </dependency>
 
+        <!-- Playwright for Java: used by the E2E API tests (com.younive.store.e2e). -->
+        <dependency>
+            <groupId>com.microsoft.playwright</groupId>
+            <artifactId>playwright</artifactId>
+            <version>1.55.0</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -164,7 +172,57 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+
+            <!-- Exclude E2E tests from the normal `mvn test` run.
+                 They require a running server + MySQL and are run via the `e2e` profile. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>**/e2e/**</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Run ONLY the E2E suite against a running server:
+             mvn test -Pe2e -DbaseUrl=http://localhost:8080 -->
+        <profile>
+            <id>e2e</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <!-- Override the default excludes: run only the e2e package. -->
+                            <excludes>
+                                <exclude>none</exclude>
+                            </excludes>
+                            <includes>
+                                <include>**/e2e/**/*E2ETest.java</include>
+                            </includes>
+                            <!-- Pass through e2e config system properties to the JVM. -->
+                            <systemPropertyVariables>
+                                <baseUrl>${baseUrl}</baseUrl>
+                                <e2e.mysql.url>${e2e.mysql.url}</e2e.mysql.url>
+                                <e2e.mysql.user>${e2e.mysql.user}</e2e.mysql.user>
+                                <e2e.mysql.password>${e2e.mysql.password}</e2e.mysql.password>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+            <properties>
+                <baseUrl>http://localhost:8080</baseUrl>
+                <e2e.mysql.url>jdbc:mysql://localhost:3306/store_api</e2e.mysql.url>
+                <e2e.mysql.user>root</e2e.mysql.user>
+                <e2e.mysql.password></e2e.mysql.password>
+            </properties>
+        </profile>
+    </profiles>
 
 </project>
