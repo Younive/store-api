@@ -71,7 +71,7 @@ class ProductControllerTest extends BaseIntegrationTest {
     @Test
     void createProduct_returns201_withCreatedProduct() throws Exception {
         mockMvc.perform(post("/products")
-                        .header("Authorization", testUserToken)
+                        .header("Authorization", adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -85,9 +85,24 @@ class ProductControllerTest extends BaseIntegrationTest {
     }
 
     @Test
+    void createProduct_returns403_whenNotAdmin() throws Exception {
+        mockMvc.perform(post("/products")
+                        .header("Authorization", testUserToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "name": "New Phone",
+                                    "description": "A new phone",
+                                    "price": 599.99
+                                }
+                                """))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void updateProduct_returnsUpdatedProduct() throws Exception {
         mockMvc.perform(put("/products/" + testProduct.getId())
-                        .header("Authorization", testUserToken)
+                        .header("Authorization", adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -97,21 +112,39 @@ class ProductControllerTest extends BaseIntegrationTest {
                                     "price": 899.99
                                 }
                                 """.formatted(testProduct.getId())))
-                .andExpect(status().isCreated())
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Updated Laptop"));
+    }
+
+    @Test
+    void updateProduct_returns403_whenNotAdmin() throws Exception {
+        mockMvc.perform(put("/products/" + testProduct.getId())
+                        .header("Authorization", testUserToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "name": "Hacked", "price": 0.01 }
+                                """))
+                .andExpect(status().isForbidden());
     }
 
     @Test
     void deleteProduct_returns204() throws Exception {
         mockMvc.perform(delete("/products/" + testProduct.getId())
-                        .header("Authorization", testUserToken))
+                        .header("Authorization", adminToken))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void deleteProduct_returns403_whenNotAdmin() throws Exception {
+        mockMvc.perform(delete("/products/" + testProduct.getId())
+                        .header("Authorization", testUserToken))
+                .andExpect(status().isForbidden());
     }
 
     @Test
     void deleteProduct_returns404_whenNotFound() throws Exception {
         mockMvc.perform(delete("/products/99999")
-                        .header("Authorization", testUserToken))
+                        .header("Authorization", adminToken))
                 .andExpect(status().isNotFound());
     }
 }

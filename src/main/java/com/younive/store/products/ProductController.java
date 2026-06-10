@@ -52,16 +52,15 @@ public class ProductController {
 
     @PutMapping("/{id}")
     public ResponseEntity<ProductDto> updateProduct(
-            @RequestBody ProductDto request,
-            UriComponentsBuilder uriBuilder){
-        var product = productRepository.findById(request.getId()).orElse(null);
+            @PathVariable Long id,
+            @RequestBody ProductDto request){
+        var product = productRepository.findById(id).orElse(null);
         if (product == null) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
         productMapper.updateEntity(request, product);
-        var productDto = productMapper.toDto(product);
-        var uri = uriBuilder.path("/products/{id}").buildAndExpand(product.getId()).toUri();
-        return ResponseEntity.created(uri).body(productDto);
+        productRepository.save(product);
+        return ResponseEntity.ok(productMapper.toDto(product));
     }
 
     @DeleteMapping("/{id}")
