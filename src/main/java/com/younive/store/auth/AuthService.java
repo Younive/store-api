@@ -22,7 +22,9 @@ public class AuthService {
 
     public User getCurrentUser() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
-        var userId = (Long)authentication.getPrincipal();
+        if (authentication == null || !(authentication.getPrincipal() instanceof Long userId)) {
+            return null;
+        }
 
         return userRepository.findById(userId).orElse(null);
     }
@@ -43,7 +45,7 @@ public class AuthService {
 
     public Jwt refreshAccessToken(String refreshToken) {
         var jwt = jwtService.parseToken(refreshToken);
-        if (jwt == null || jwt.isExpired()) {
+        if (jwt == null || jwt.isExpired() || !jwt.isRefreshToken()) {
             throw new BadCredentialsException("Invalid refresh token");
         }
 

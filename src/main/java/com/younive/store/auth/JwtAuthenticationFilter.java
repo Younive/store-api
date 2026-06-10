@@ -28,9 +28,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        var token = authHeader.replace("Bearer ", "");
+        var token = authHeader.substring("Bearer ".length());
         var jwt = jwtService.parseToken(token);
-        if (jwt == null || jwt.isExpired()) {
+        if (jwt == null || jwt.isExpired() || !jwt.isAccessToken()) {
             filterChain.doFilter(request, response);
             return;
         }

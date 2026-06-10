@@ -3,8 +3,8 @@ spring:
     name: store
   jwt:
     secret: ${JWT_SECRET}
-    accessTokenExpiration: 300 #5m
-    refreshTokenExpiration: 604800 #7d
+    accessTokenValiditySeconds: 300 #5m
+    refreshTokenValiditySeconds: 604800 #7d
   profiles:
     active: dev
 stripe:
