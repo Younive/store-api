@@ -7,6 +7,8 @@ spring:
     refreshTokenValiditySeconds: 604800 #7d
   profiles:
     active: dev
+  jpa:
+    open-in-view: false
 stripe:
   secretKey: ${STRIPE_SECRET_KEY}
   webhookSecretKey: ${STRIPE_WEBHOOK_SECRET_KEY}
