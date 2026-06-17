@@ -20,6 +20,3 @@ sentry:
 admin:
   email: ${ADMIN_EMAIL:}
   password: ${ADMIN_PASSWORD:}
-logging:
-  level:
-    org.flywaydb: DEBUG
