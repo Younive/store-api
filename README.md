@@ -40,6 +40,10 @@ STRIPE_WEBHOOK_SECRET_KEY=whsec_...
 SENTRY_DSN=https://...@o0.ingest.sentry.io/0
 SENTRY_ENVIRONMENT=production            # defaults to "development"
 SENTRY_TRACES_SAMPLE_RATE=0.1            # performance tracing, defaults to 0.0 (off)
+
+# Optional — admin user seeding (leave unset to skip)
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=your_admin_password
 ```
 
 The dev datasource points at `jdbc:mysql://localhost:3306/store_api` (auto-created). Adjust the URL in `src/main/resources/application-dev.yaml` if your MySQL lives elsewhere.
@@ -50,7 +54,43 @@ The dev datasource points at `jdbc:mysql://localhost:3306/store_api` (auto-creat
 ./mvnw spring-boot:run
 ```
 
-Flyway auto-creates the schema on first run.
+Flyway auto-creates the schema on first run. On first startup, if `ADMIN_EMAIL` and `ADMIN_PASSWORD` are set, an admin user is seeded automatically via `DataInitializer`.
+
+## Deployment
+
+The app ships as a Docker image and deploys to Railway via GitHub Actions.
+
+**Docker**
+
+Multi-stage build — `eclipse-temurin:23-jdk-alpine` for compilation, `eclipse-temurin:23-jre-alpine` for runtime. Build:
+
+```bash
+docker build -t store-api .
+```
+
+**Railway**
+
+Required environment variables on the Railway service:
+
+| Variable | Value |
+|---|---|
+| `SPRING_PROFILES_ACTIVE` | `prod` |
+| `SPRING_DATASOURCE_URL` | `jdbc:mysql://${{MYSQLHOST}}:${{MYSQLPORT}}/${{MYSQLDATABASE}}` |
+| `SPRING_DATASOURCE_USERNAME` | `${{MYSQLUSER}}` |
+| `SPRING_DATASOURCE_PASSWORD` | `${{MYSQLPASSWORD}}` |
+| `JWT_SECRET` | strong random 32+ char string |
+| `STRIPE_SECRET_KEY` | `sk_live_...` |
+| `STRIPE_WEBHOOK_SECRET_KEY` | `whsec_...` |
+| `SENTRY_DSN` | prod DSN |
+| `SENTRY_ENVIRONMENT` | `production` |
+| `ADMIN_EMAIL` | seed admin email |
+| `ADMIN_PASSWORD` | seed admin password |
+
+**CI/CD (GitHub Actions)**
+
+`.github/workflows/ci.yml` — two jobs:
+- `test`: runs on every push and PR; spins up a MySQL 8 service container and runs the full test suite
+- `deploy`: triggers on merge to `main` after tests pass; deploys to Railway via `RAILWAY_TOKEN` secret
 
 ## Testing
 
@@ -192,6 +232,7 @@ Managed by Flyway. Migrations in `src/main/resources/db/migration/`:
 | V4 | Role column on users |
 | V5 | Orders table |
 | V6 | Order items table |
+| V7 | Seed data (4 categories, 12 products) |
 
 ## Project Structure
 
@@ -204,7 +245,7 @@ src/main/java/com/younive/store/
 ├── orders/      # Order management, PaymentStatus
 ├── payments/    # Stripe integration, webhook
 ├── admin/       # Admin-only endpoints
-└── common/      # GlobalExceptionHandler, LoggingFilter, ErrorDto
+└── common/      # GlobalExceptionHandler, LoggingFilter, FlywayConfig, DataInitializer, ErrorDto
 ```
 
 ## Roles
@@ -214,7 +255,7 @@ src/main/java/com/younive/store/
 | `USER` | Standard authenticated endpoints; can only modify their own account |
 | `ADMIN` | All endpoints including `/admin/*`, product writes, user listing |
 
-Registration always assigns `USER`. There is no seeded admin — promote one directly in the database:
+Registration always assigns `USER`. An admin is seeded on first startup when `ADMIN_EMAIL` + `ADMIN_PASSWORD` env vars are set. To promote an existing user manually:
 
 ```sql
 UPDATE users SET role = 'ADMIN' WHERE email = 'you@example.com';
