@@ -28,3 +28,6 @@ target/
 .idea/
 .run/
 .claude/
+.env.local
+java dev.md
+resume.md

@@ -11,6 +11,7 @@ REST API for an e-commerce store. Built with Spring Boot 4, Java 23, MySQL, and 
 | Database | MySQL 8 + Flyway migrations |
 | Auth | Spring Security + JWT (JJWT 0.12.6) |
 | Payments | Stripe Java SDK 32.1 |
+| Monitoring | Sentry 8.43.1 (errors + optional tracing) |
 | Mapping | MapStruct 1.6.3 |
 | Docs | SpringDoc OpenAPI |
 | Build | Maven |
@@ -26,7 +27,7 @@ REST API for an e-commerce store. Built with Spring Boot 4, Java 23, MySQL, and 
 
 **1. Set environment variables**
 
-No credentials live in config files — everything comes from the environment:
+No credentials live in config files — everything comes from the environment. See [.env.example](.env.example) for the full template (copy to `.env`, which is gitignored):
 
 ```bash
 MYSQL_USER=root                      # dev datasource user (defaults to root)
@@ -34,6 +35,11 @@ MYSQL_PASSWORD=your_db_password      # dev datasource password
 JWT_SECRET=your_secret               # HS256 key, must be at least 32 chars
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET_KEY=whsec_...
+
+# Optional — Sentry error monitoring (leave unset to disable the SDK entirely)
+SENTRY_DSN=https://...@o0.ingest.sentry.io/0
+SENTRY_ENVIRONMENT=production            # defaults to "development"
+SENTRY_TRACES_SAMPLE_RATE=0.1            # performance tracing, defaults to 0.0 (off)
 ```
 
 The dev datasource points at `jdbc:mysql://localhost:3306/store_api` (auto-created). Adjust the URL in `src/main/resources/application-dev.yaml` if your MySQL lives elsewhere.
@@ -54,6 +60,15 @@ Flyway auto-creates the schema on first run.
 ```
 
 The E2E suite lives in `src/test/java/com/younive/store/e2e/` and is excluded from the default `test` run. See [docs/e2e.md](docs/e2e.md) for prerequisites and configuration.
+
+## Error Monitoring (Sentry)
+
+Set `SENTRY_DSN` and the SDK activates automatically — no code changes needed. Captured out of the box:
+
+- Unhandled exceptions from any controller (via the auto-registered Spring MVC exception resolver)
+- Anything logged at `ERROR` with a throwable (e.g. Stripe checkout-session failures) via the Logback appender
+
+Client-error responses handled by `GlobalExceptionHandler` (validation 400s, etc.) are intentionally not reported. `send-default-pii` is off, so request bodies/cookies/user identifiers are not attached to events. With `SENTRY_DSN` unset (local dev, tests, CI) the SDK is fully disabled.
 
 ## API Reference
 

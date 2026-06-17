@@ -10,3 +10,13 @@ spring:
 stripe:
   secretKey: ${STRIPE_SECRET_KEY}
   webhookSecretKey: ${STRIPE_WEBHOOK_SECRET_KEY}
+sentry:
+  dsn: ${SENTRY_DSN:} # empty DSN = SDK disabled (local/test/CI safe)
+  environment: ${SENTRY_ENVIRONMENT:development}
+  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.0} # errors only by default
+  send-default-pii: false
+  in-app-includes:
+    - com.younive.store
+admin:
+  email: ${ADMIN_EMAIL:}
+  password: ${ADMIN_PASSWORD:}
