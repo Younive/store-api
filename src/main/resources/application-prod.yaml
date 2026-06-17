@@ -1,4 +1,7 @@
 spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
 websiteUrl: https://mystore.com # mock
